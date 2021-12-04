@@ -1,0 +1,90 @@
+import numpy
+import numpy as np
+import pandas as pd
+import openpyxl
+import gurobipy as grb
+from gurobipy import GRB
+from gurobipy import quicksum
+import xlrd
+
+# Read Data
+df = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name='Sheet1')
+C_j = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name='C_j', header=None)
+C1_lj = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name="C1_lj", header=None)
+I_ij = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name="I_ij", header=None)
+I1_lj = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name="I1_lj", header=None)
+I0_i = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name="I0_i", header=None)
+a_ik = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name="a_ik", header=None)
+b_km = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name="b_km", header=None)
+c_ml = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name="c_ml", header=None)
+d_il = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name="d_il", header=None)
+e_ik = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name="e_ik", header=None)
+MaxS_ij = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name="MaxS_ij", header=None)
+MinS_ij = pd.read_excel('D:\Dersler\Senior Design_2\modelv2.xlsx', sheet_name="MinS_ij", header=None)
+
+# Defining Data Column
+j = df['Store']
+l = df['Product Category']
+m = df['Product Model']
+color = df['Color']
+size = df['Size']
+i = m + ' ' + color + ' ' + size
+k = m + ' ' + color
+df['SKU'] = i
+
+df['Option'] = k
+df = df.drop(['Size', 'Color'], axis=1)
+
+
+set_i = range(1, len(i) + 1)  # +1 konulacak mı emin değilim
+set_j = range(1, len(j) + 1)
+set_k = range(1, len(k) + 1)
+set_l = range(1, len(l) + 1)
+set_m = range(1, len(m) + 1)
+MinW = 5000
+MaxW = 15000
+
+rep_model = grb.Model(name="Replenishment Model")
+
+
+C= {}
+for j in set_j:
+    C[j]=C_j
+
+C1 = {}
+for l in set_l:
+    for j in set_j:
+        C1[l, j] = C1_lj
+I = {}
+for i in set_i:
+    for j in set_j:
+        I[i, j] = I_ij
+
+I0 = {}
+for i in set_i:
+    I0[i] = I0_i
+
+d = {}
+for i in set_i:
+    for l in set_l:
+        d[i, l] = d_il
+
+e = {}
+for i in set_i:
+    for k in set_k:
+        e[i,k] = e_ik
+
+C_j=C_j.to_dict()
+C1_lj=C1_lj.to_dict()
+I_ij=I_ij.to_dict()
+I0_i=I0_i.to_dict()
+d_il=d_il.to_dict()
+e_ik=e_ik.to_dict()
+
+
+q = {}
+for i in set_i:
+    for j in set_j:
+        q[i, j] = rep_model.addVar(vtype=GRB.INTEGER)
+
+constraint1 = rep_model.addConstrs(grb.quicksum(q[i, j] for i in set_i) <= I0_i for j in set_j)
